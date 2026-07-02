@@ -1,6 +1,5 @@
 const path = require("path");
 const fs = require("fs");
-const logo = require("./public/logo.svg");
 
 // Helper function to read SVG and return data URL
 function getSvgDataUrl(filePath) {

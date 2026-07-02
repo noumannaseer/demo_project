@@ -1,53 +1,99 @@
 const { randomBytes } = require("crypto");
 const jwt = require("jsonwebtoken");
 const { SiweMessage } = require("siwe");
+const { getAddress, isAddress } = require("ethers");
 const {
   upsertUserNonce,
   findUserByWallet,
   findUserById,
-  clearUserNonce,
+  consumeUserNonce,
 } = require("../db/repository");
 const { config } = require("../config");
 const { setWithExpiry, getKey, deleteKey } = require("./redis");
 
+function authError(message, status = 401) {
+  const err = new Error(message);
+  err.status = status;
+  return err;
+}
+
+function normalizeWalletAddress(walletAddress) {
+  if (typeof walletAddress !== "string" || !isAddress(walletAddress)) {
+    throw authError("Invalid wallet address", 400);
+  }
+  return getAddress(walletAddress).toLowerCase();
+}
+
 async function createNonce(walletAddress) {
+  const wallet = normalizeWalletAddress(walletAddress);
   const nonce = randomBytes(16).toString("hex");
   const expires = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-  await upsertUserNonce(walletAddress, nonce, expires);
+  await upsertUserNonce(wallet, nonce, expires);
   return { nonce, expiresAt: expires };
 }
 
-async function verifySiwe(message, signature) {
-  const siwe = new SiweMessage(message);
-  const fields = await siwe.verify({ signature });
-  const wallet = fields.data.address.toLowerCase();
+async function verifySiwe(message, signature, walletAddress) {
+  const wallet = normalizeWalletAddress(walletAddress);
+  let siwe;
+  try {
+    siwe = new SiweMessage(message);
+  } catch {
+    throw authError("Invalid SIWE message", 400);
+  }
+
+  if (siwe.address.toLowerCase() !== wallet) {
+    throw authError("Wallet address mismatch");
+  }
+  if (siwe.domain !== config.siweDomain) {
+    throw authError("Invalid SIWE domain");
+  }
+  if (siwe.uri !== config.siweUri) {
+    throw authError("Invalid SIWE URI");
+  }
+  if (Number(siwe.chainId) !== config.chainId) {
+    throw authError("Invalid SIWE chain");
+  }
 
   const user = await findUserByWallet(wallet);
-  if (!user) {
-    const err = new Error("User not found");
-    err.status = 400;
-    throw err;
-  }
-  if (user.nonce !== fields.data.nonce) {
-    const err = new Error("Invalid nonce");
-    err.status = 401;
-    throw err;
-  }
-  if (new Date(user.nonce_expires_at) < new Date()) {
-    const err = new Error("Nonce expired");
-    err.status = 401;
-    throw err;
+  if (!user || !user.nonce) {
+    throw authError("Invalid nonce");
   }
 
-  await clearUserNonce(user.id);
+  const expectedNonce = user.nonce;
+  const expiresAt = Date.parse(user.nonce_expires_at);
+  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+    await consumeUserNonce(wallet, expectedNonce);
+    throw authError("Nonce expired");
+  }
+
+  const verification = await siwe.verify(
+    {
+      signature,
+      domain: config.siweDomain,
+      nonce: expectedNonce,
+      time: new Date().toISOString(),
+    },
+    { suppressExceptions: true }
+  );
+  if (!verification.success) {
+    throw authError("Invalid signature");
+  }
+
+  const consumed = await consumeUserNonce(wallet, expectedNonce);
+  if (consumed.reason === "expired") {
+    throw authError("Nonce expired");
+  }
+  if (consumed.reason) {
+    throw authError("Invalid nonce");
+  }
 
   const token = jwt.sign(
-    { sub: user.id, wallet },
+    { sub: consumed.user.id, wallet },
     config.jwtSecret,
     { expiresIn: config.jwtExpiresIn }
   );
 
-  return { token, user: { id: user.id, wallet } };
+  return { token, user: { id: consumed.user.id, wallet } };
 }
 
 async function getSession(userId) {

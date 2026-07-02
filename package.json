@@ -17,6 +17,8 @@
     "contract:test": "hardhat test --config contract/hardhat.config.cjs",
     "contract:deploy": "hardhat run contract/scripts/deploy.cjs --config contract/hardhat.config.cjs",
     "contract:node": "hardhat node --config contract/hardhat.config.cjs",
+    "test": "npm run test:auth",
+    "test:auth": "node --test test/auth.test.js",
     "lint": "echo \"No linter configured\""
   },
   "dependencies": {

@@ -55,6 +55,30 @@ async function clearUserNonce(userId) {
   });
 }
 
+async function consumeUserNonce(walletAddress, nonce) {
+  return withDb((db) => {
+    const user = db.users.find(
+      (u) => lc(u.wallet_address) === lc(walletAddress)
+    );
+    if (!user) return { user: null, reason: "not_found" };
+    if (!user.nonce || user.nonce !== nonce) {
+      return { user, reason: "invalid" };
+    }
+
+    const expiresAt = Date.parse(user.nonce_expires_at);
+    if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+      user.nonce = null;
+      user.nonce_expires_at = null;
+      return { user, reason: "expired" };
+    }
+
+    user.nonce = null;
+    user.nonce_expires_at = null;
+    user.last_login_at = nowIso();
+    return { user, reason: null };
+  });
+}
+
 // --- Campaigns ---
 
 async function listCampaigns({ status, query, eligibilityType, limit = 20, offset = 0 } = {}) {
@@ -370,6 +394,7 @@ module.exports = {
   findUserByWallet,
   findUserById,
   clearUserNonce,
+  consumeUserNonce,
   listCampaigns,
   getCampaignById,
   createCampaign,

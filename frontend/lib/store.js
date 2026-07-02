@@ -4,12 +4,24 @@ export const useWalletStore = create((set) => ({
   address: null,
   chainId: null,
   token: null,
-  setWallet: (address, chainId) => set({ address, chainId }),
-  setToken: (token) => set({ token }),
+  authStatus: "checking",
+  setAuthStatus: (authStatus) => set({ authStatus }),
+  setSession: ({ address, chainId = null, token }) =>
+    set({
+      address,
+      chainId,
+      token,
+      authStatus: "authenticated",
+    }),
   disconnect: () => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("jwt");
     }
-    set({ address: null, chainId: null, token: null });
+    set({
+      address: null,
+      chainId: null,
+      token: null,
+      authStatus: "idle",
+    });
   },
 }));

@@ -24,11 +24,13 @@ router.post("/nonce", async (req, res, next) => {
 
 router.post("/verify", async (req, res, next) => {
   try {
-    const { message, signature } = req.body;
-    if (!message || !signature) {
-      return res.status(400).json({ error: "message and signature required" });
+    const { message, signature, walletAddress } = req.body;
+    if (!message || !signature || !walletAddress) {
+      return res.status(400).json({
+        error: "message, signature and walletAddress required",
+      });
     }
-    const result = await verifySiwe(message, signature);
+    const result = await verifySiwe(message, signature, walletAddress);
     res.json(result);
   } catch (e) {
     next(e);

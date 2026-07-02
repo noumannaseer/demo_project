@@ -1,3 +1,5 @@
+const corsOrigin = process.env.CORS_ORIGIN || "http://localhost:3000";
+
 const config = {
   port: Number(process.env.PORT) || 4000,
   nodeEnv: process.env.NODE_ENV || "development",
@@ -9,7 +11,9 @@ const config = {
     .split(",")
     .map((w) => w.trim().toLowerCase())
     .filter(Boolean),
-  corsOrigin: process.env.CORS_ORIGIN || "http://localhost:3000",
+  corsOrigin,
+  siweDomain: process.env.SIWE_DOMAIN || new URL(corsOrigin).host,
+  siweUri: process.env.SIWE_URI || corsOrigin,
   rpcUrl: process.env.ETHEREUM_RPC_URL || "http://127.0.0.1:8545",
   contractAddress: process.env.CONTRACT_ADDRESS || "",
   chainId: Number(process.env.CHAIN_ID || process.env.NEXT_PUBLIC_CHAIN_ID || 31337),

